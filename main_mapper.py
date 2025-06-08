@@ -9,6 +9,7 @@ import torch
 import glob
 from diffuse.inverter_remove_hair import InverterRemoveHair
 import numpy as np
+from PIL import Image
 from PIL import ImageFile
 import os
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -19,6 +20,12 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_dir', type=str, default='./test_data',
                         help='Directory of test data.')
+    parser.add_argument('--best_model_path', type=str, required=False,
+                        default='./mapper/checkpoints/final/best_model.pt',
+                        help='Mapper model path.')
+    parser.add_argument('--face_parsing_model_path', type=str, required=False,
+                        default='./ckpts/face_parsing.pth',
+                        help='Mapper model path.')
     parser.add_argument('--learning_rate', type=float, default=0.01,
                         help='Learning rate for optimization.')
     parser.add_argument('--num_iterations', type=int, default=100,
@@ -59,11 +66,11 @@ def run():
     model = StyleGAN2adaGenerator(model_name, logger=None, truncation_psi=args.truncation_psi)
 
     mapper = LevelMapper(input_dim=512).eval().cuda()
-    ckpt = torch.load('./mapper/checkpoints/final/best_model.pt')
+    ckpt = torch.load(args.best_model_path)
     alpha = float(ckpt['alpha']) * 1.2
     mapper.load_state_dict(ckpt['state_dict'], strict=True)
     kwargs = {'latent_space_type': latent_space_type}
-    parsingNet = get_parsingNet(save_pth='./ckpts/face_parsing.pth')
+    parsingNet = get_parsingNet(save_pth=args.face_parsing_model_path)
     inverter = InverterRemoveHair(
         model_name,
         Generator=model,
@@ -100,14 +107,22 @@ def run():
         else:
             continue
 
-        latent_codes_origin = np.reshape(np.load(code_path), (1, 18, 512))
+        latent_codes = np.load(code_path)
+        # outputs = model.easy_synthesize(latent_codes,
+        #                                 **kwargs,
+        #                                 generate_style=False,
+        #                                 generate_image=True,
+        #                                 add_noise=True)        
+        # origin_image = outputs['image'][0][:, :, ::-1]
+        # origin_save_path = os.path.join(res_dir, f'{name}_1.png')
+        # cv2.imwrite(origin_save_path, origin_image)
+        
+        latent_codes_origin = np.reshape(latent_codes.copy(), (1, 18, 512))
 
         mapper_input = latent_codes_origin.copy()
         mapper_input_tensor = torch.from_numpy(mapper_input).cuda().float()
         edited_latent_codes = latent_codes_origin
         edited_latent_codes[:, :8, :] += alpha * mapper(mapper_input_tensor).to('cpu').detach().numpy()
-
-        origin_img = cv2.imread(origin_img_path)
 
         outputs = model.easy_style_mixing(latent_codes=edited_latent_codes,
                                           style_range=range(7, 18),
@@ -117,7 +132,10 @@ def run():
                                           )
 
         edited_img = outputs['image'][0][:, :, ::-1]
+        # edited_save_path = os.path.join(res_dir, f'{name}_2.png')
+        # cv2.imwrite(edited_save_path, edited_img)
 
+        origin_img = cv2.imread(origin_img_path)
         # --remain_ear: preserve the ears in the original input image.
         if args.remain_ear:
             hair_mask = get_hair_mask(img_path=origin_img, net=parsingNet, include_hat=True, include_ear=False)

@@ -1,10 +1,12 @@
 import os
 import sys
+import time
 import argparse
 import torch
 import torchvision.transforms as transforms
 import numpy as np
 import PIL.Image
+import shutil
 
 from argparse import Namespace
 from PIL import ImageFile
@@ -27,9 +29,6 @@ def parse_args():
     parser.add_argument('--e4e_model_path', type=str, required=False,
                         default='./ckpts/e4e_ffhq_encode.pt',
                         help='Encoder4editing model path.')
-    parser.add_argument('--landmarks_model_path', type=str, required=False,
-                        default='./ckpts/shape_predictor_68_face_landmarks.dat',
-                        help='Landmarks model path.')
     return parser.parse_args()
 
 def run_on_batch(inputs, net):
@@ -50,9 +49,8 @@ def image_latent(img_transforms, net, file_path, code_path):
         np.save(code_path, latent)
         print(f'save to {code_path}')
 
-def run_image_align():
+def run_image_encode():
     args = parse_args()
-    input_image_dir = os.path.join(args.data_dir, 'images')
     origin_image_dir = os.path.join(args.data_dir, 'origin')
     data_code_dir = os.path.join(args.data_dir, 'code')
     os.makedirs(origin_image_dir, exist_ok=True)
@@ -72,18 +70,20 @@ def run_image_align():
         transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
     ])
     
-    landmarks_detector = LandmarksDetector(args.landmarks_model_path)
-    for img_name in os.listdir(input_image_dir):
-        raw_img_path = os.path.join(input_image_dir, img_name)
-        for i, face_landmarks in enumerate(landmarks_detector.get_landmarks(raw_img_path), start=1):
-            img_name = os.path.splitext(img_name)[0]
-            face_img_name = f'{img_name}.png' if i == 1 else f'{img_name}_{i}.png'
-            face_code_name = f'{img_name}.npy' if i == 1 else f'{img_name}_{i}.npy'
-            aligned_face_path = os.path.join(origin_image_dir, face_img_name)
-            code_path = os.path.join(data_code_dir, face_code_name) 
-            image_align(raw_img_path, aligned_face_path, face_landmarks)
+    file_names = sorted(os.listdir(os.path.join(args.data_dir, 'inversions')))
+    for file_name in file_names:
+        base_name = os.path.splitext(file_name)[0]
+        file_ext = os.path.splitext(file_name)[1].lower()
+        if (file_ext == '.png' or file_ext == '.jpg'):
+            tic = time.time()
+            edit_img_path = os.path.join(args.data_dir, 'edit', base_name, f'{base_name}_front.png')
+            aligned_face_path = os.path.join(origin_image_dir, f'{base_name}.png') 
+            shutil.copyfile(edit_img_path, aligned_face_path)
+            code_path = os.path.join(data_code_dir, f'{base_name}.npy') 
             image_latent(img_transforms, net, aligned_face_path, code_path)
+            toc = time.time()
+            print('Editing {} done, took {:.4f} seconds.'.format(f'{base_name}_front.png', toc - tic))
     
 
 if __name__ == "__main__":
-    run_image_align()
+    run_image_encode()
