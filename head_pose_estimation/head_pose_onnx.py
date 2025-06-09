@@ -15,7 +15,7 @@ from argparse import ArgumentParser
 from face_detection import FaceDetector
 from mark_detection import MarkDetector
 from pose_estimation import PoseEstimator
-from utils import refine
+from utils.utils import refine
 
 def rotation_matrix_to_euler_angles(rmat):
     '''

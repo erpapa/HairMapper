@@ -22,8 +22,11 @@ def parse_args():
                         help='Directory to save the results. If not specified, '
                              '`data/double_chin_pair/images` will be used by default.')
     return parser.parse_args()
+
 def run_on_batch(inputs, net):
-    latents = net(inputs.to("cuda").float(), randomize_noise=False, return_latents=True)
+    latents = net.encode(inputs.to('cuda').float(),
+                         resize=False,
+                         randomize_noise=False)
     return latents
 
 def run():

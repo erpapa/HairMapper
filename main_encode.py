@@ -31,19 +31,19 @@ def parse_args():
                         help='Encoder4editing model path.')
     return parser.parse_args()
 
-def run_on_batch(inputs, net):
-    latents = net.encode(inputs.to('cuda').float(),
+def run_on_batch(inputs, net, device):
+    latents = net.encode(inputs.to(device).float(),
                          resize=False,
                          randomize_noise=False)
     return latents
 
-def image_latent(img_transforms, net, file_path, code_path):
+def image_latent(img_transforms, net, device, file_path, code_path):
     if os.path.exists(code_path):
         return
     input_image = PIL.Image.open(file_path)
     transformed_image = img_transforms(input_image)
     with torch.no_grad():
-        latents = run_on_batch(transformed_image.unsqueeze(0), net)
+        latents = run_on_batch(transformed_image.unsqueeze(0), net, device)
         latent = latents[0].cpu().numpy()
         latent = np.reshape(latent, (1,18,512))
         np.save(code_path, latent)
@@ -51,6 +51,8 @@ def image_latent(img_transforms, net, file_path, code_path):
 
 def run_image_encode():
     args = parse_args()
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     origin_image_dir = os.path.join(args.data_dir, 'origin')
     data_code_dir = os.path.join(args.data_dir, 'code')
     os.makedirs(origin_image_dir, exist_ok=True)
@@ -61,8 +63,8 @@ def run_image_encode():
     opts['checkpoint_path'] = args.e4e_model_path
     opts= Namespace(**opts)
     net = pSp(opts)
+    net.to(device)
     net.eval()
-    net.cuda()
 
     img_transforms = transforms.Compose([
         transforms.Resize((256, 256)),
@@ -80,7 +82,7 @@ def run_image_encode():
             aligned_face_path = os.path.join(origin_image_dir, f'{base_name}.png') 
             shutil.copyfile(edit_img_path, aligned_face_path)
             code_path = os.path.join(data_code_dir, f'{base_name}.npy') 
-            image_latent(img_transforms, net, aligned_face_path, code_path)
+            image_latent(img_transforms, net, device, aligned_face_path, code_path)
             toc = time.time()
             print('Editing {} done, took {:.4f} seconds.'.format(f'{base_name}_front.png', toc - tic))
     

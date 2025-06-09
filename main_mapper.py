@@ -112,7 +112,7 @@ def run():
         #                                 **kwargs,
         #                                 generate_style=False,
         #                                 generate_image=True,
-        #                                 add_noise=True)        
+        #                                 add_noise=True)
         # origin_image = outputs['image'][0][:, :, ::-1]
         # origin_save_path = os.path.join(res_dir, f'{name}_1.png')
         # cv2.imwrite(origin_save_path, origin_image)

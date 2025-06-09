@@ -21,10 +21,16 @@ python run_dpr_light.py \
 
 # Step 3
 cd ../head_pose_estimation
-python head_pose_estimation.py \
+# python head_pose_estimation.py \
+#     --proj_data_dir ../test_data \
+#     --face_model_path ../ckpts/shape_predictor_68_face_landmarks.dat \
+#     --shuff_model_path ../ckpts/head_pose_model/shuff_epoch_120.pkl
+
+python head_pose_detect.py \
     --proj_data_dir ../test_data \
     --face_model_path ../ckpts/shape_predictor_68_face_landmarks.dat \
-    --shuff_model_path ../ckpts/head_pose_model/shuff_epoch_120.pkl
+    --weights_model_path ../ckpts/head_pose_model/resnet50.pt \
+    --network resnet50
 
 # Step 4
 cd ../styleflow_editing
