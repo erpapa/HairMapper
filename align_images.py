@@ -111,9 +111,9 @@ def run_image_align():
         if (file_ext == '.png' or file_ext == '.jpg'):
             tic = time.time()
             raw_img_path = os.path.join(input_image_dir, file_name)
-            for i, face_landmarks in enumerate(landmarks_detector.get_landmarks(raw_img_path), start=1):
-                face_img_name = f'{base_name}.png' if i == 1 else f'{base_name}_{i}.png'
-                face_code_name = f'{base_name}.npy' if i == 1 else f'{base_name}_{i}.npy'
+            for i, face_landmarks in enumerate(landmarks_detector.get_landmarks(raw_img_path), start=0):
+                face_img_name = f'{base_name}.png' if i == 0 else f'{base_name}_{i}.png'
+                face_code_name = f'{base_name}.npy' if i == 0 else f'{base_name}_{i}.npy'
                 aligned_face_path = os.path.join(crop_image_dir, face_img_name)
                 origin_img_path = os.path.join(origin_image_dir, face_img_name) 
                 code_path = os.path.join(data_code_dir, face_code_name) 
